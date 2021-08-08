@@ -20,6 +20,7 @@ def resolve_self_created_case(filename):
     pass
     return pos
 
+
 supply_num = 0
 demand_num = 0
 
