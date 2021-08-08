@@ -18,25 +18,25 @@ class Node:
     def get_type(self):
         if self.f_battery_q > 0:
             if self.e_battery_q < 0:
-                return 4
+                return 4  # 同时取还电池的电池柜点
             elif self.e_battery_q == 0:
-                return 5
+                return 5  # 取电池的电池柜点
         elif self.f_battery_q < 0:
-            return -4
+            return -4  # 站点需求点
         elif self.f_battery_q == 0:
             if self.e_battery_q < 0:
-                return -1
+                return -1  # 归还电池的电池柜点
             elif self.e_battery_q == 0:
                 if self.prev is None:
-                    return 8
+                    return 8  # 路径头节点
                 else:
-                    return 9
+                    return 9  # 路径尾节点
 
 
 def insert_node1_after_node_2(node1, node2, k=0):
     node_k = node2
     for _ in range(k):
-        node_k = node2.after
+        node_k = node_k.after
     node1.prev = node_k
     node1.after = node_k.after
     node_k.after.prev = node1
@@ -81,7 +81,7 @@ def check_load_feasibility_from_node1_to_node2(node_1, node_2, start_f, start_e,
         node = node.after
         _start_f += node.f_battery_q
         _start_e += node.e_battery_q
-        if _start_f < 0 or _start_e < 0 or start_f + start_e > vehicle_q:
+        if _start_f < 0 or _start_e < 0 or _start_f + _start_e > vehicle_q:
             return False, -1, -1
     return True, _start_f, _start_e
 
@@ -90,7 +90,7 @@ class VRP:
     def __init__(self):
 
         self.vehicle_num_limit = 2
-        self.vehicle_capacity_limit = [20] * self.vehicle_num_limit
+        self.vehicle_capacity_limit = [200] * self.vehicle_num_limit
         self.vehicle_dis_limit = [3600] * self.vehicle_num_limit
 
         self.vehicle_dis = [0] * self.vehicle_num_limit
@@ -118,6 +118,18 @@ class VRP:
         self.__record_current_routes()
         return
 
+    def __recalculate_dis(self):
+        for _r, _head in enumerate(self.route_heads):
+            _tmp_dis = 0
+            _node = _head
+            _next_node = _head.after
+            while _node != self.route_tails[_r]:
+                _tmp_dis += self.call_dis(_node.loc, _next_node.loc)
+                _node = _node.after
+                _next_node = _next_node.after
+            self.vehicle_dis[_r] = _tmp_dis
+        self.total_dis = sum(self.vehicle_dis)
+
     def __record_used_vehicle_num(self):
         self.used_vehicle_num = 0
         for i, _head in enumerate(self.route_heads):
@@ -139,8 +151,19 @@ class VRP:
                 _node = _node.after
                 self.record_routes[-1].append(_node.loc)
 
-    '''
     def create_initial_solution(self):
+        flag = True
+        while flag:
+            flag = self.best_insertion()
+        return
+
+    def create_initial_solution_improved(self):
+        flag = True
+        while flag:
+            flag = self.best_insertion_improved()
+        return
+
+    def best_insertion(self):
 
         sol_found = False
         best_ans = None
@@ -188,8 +211,8 @@ class VRP:
                         demand_loc = -1
                         flag_2 = True
 
-                        flag_1_1 = check_load_feasibility_from_node1_to_node2(_head, supply_node, 0, 0,
-                                                                              self.vehicle_capacity_limit[_r])
+                        flag_1_1, _, _ = check_load_feasibility_from_node1_to_node2(_head, supply_node, 0, 0,
+                                                                                    self.vehicle_capacity_limit[_r])
                         # 记录值以减少计算
                         while flag_2 and flag_1_1 and self.vehicle_dis[_r] + add_dis <= self.vehicle_dis_limit[_r]:
 
@@ -203,8 +226,8 @@ class VRP:
                             return_loc = -1
                             insert_node1_after_node_2(return_node, demand_node)
                             flag_3 = True
-                            flag_2_1 = check_load_feasibility_from_node1_to_node2(_head, demand_node, 0, 0,
-                                                                                  self.vehicle_capacity_limit[_r])
+                            flag_2_1, _, _ = check_load_feasibility_from_node1_to_node2(_head, demand_node, 0, 0,
+                                                                                        self.vehicle_capacity_limit[_r])
 
                             while flag_3 and flag_2_1 and self.vehicle_dis[_r] + add_dis <= self.vehicle_dis_limit[_r]:
                                 return_loc += 1
@@ -214,7 +237,7 @@ class VRP:
                                                                                            return_node.after.loc)
                                 # 此处开始快进3
                                 if check_load_feasibility_from_node1_to_node2(_head, self.route_tails[_r], 0, 0,
-                                                                              self.vehicle_capacity_limit[_r]) and \
+                                                                              self.vehicle_capacity_limit[_r])[0] and \
                                         self.vehicle_dis[_r] + add_dis <= self.vehicle_dis_limit[_r]:
                                     # 仅供测试
                                     # print(add_dis)
@@ -225,43 +248,22 @@ class VRP:
                                                                                    supply_node,
                                                                                    demand_node, return_node, supply_loc,
                                                                                    demand_loc, return_loc)
-                                    # 改为2分法,此处开始尝试增大更换电池数
-                                    low = 2
-                                    high = min(self.supply_counter[_supply], self.demand_counter[_demand])
-                                    while low <= high:
-                                        _num = int((low + high) / 2)
-                                        supply_node.f_battery_q, supply_node.e_battery_q = _num, 0
-                                        demand_node.f_battery_q, demand_node.e_battery_q = -_num, _num
-                                        return_node.f_battery_q, return_node.e_battery_q = 0, -_num
-                                        flag_4 = False
-                                        if check_load_feasibility_from_node1_to_node2(_head, self.route_tails[_r], 0, 0,
-                                                                                      self.vehicle_capacity_limit[_r]):
-                                            flag_4 = True
-                                            best_ans = self.compare_and_construct_best_ans(best_ans, add_dis,
-                                                                                           supply_node.f_battery_q, _r,
-                                                                                           supply_node,
-                                                                                           demand_node, return_node,
-                                                                                           supply_loc,
-                                                                                           demand_loc, return_loc)
-                                        if flag_4:
-                                            low = _num + 1
-                                        else:
-                                            high = _num - 1
-                                    """
+
                                     for _num in range(2, min(self.supply_counter[_supply],
                                                              self.demand_counter[_demand]) + 1):
                                         supply_node.f_battery_q, supply_node.e_battery_q = _num, 0
                                         demand_node.f_battery_q, demand_node.e_battery_q = -_num, _num
                                         return_node.f_battery_q, return_node.e_battery_q = 0, -_num
                                         if check_load_feasibility_from_node1_to_node2(_head, self.route_tails[_r], 0, 0,
-                                                                                      self.vehicle_capacity_limit[_r]):
+                                                                                      self.vehicle_capacity_limit[_r])[
+                                            0]:
                                             best_ans = self.compare_and_construct_best_ans(best_ans, add_dis,
                                                                                            supply_node.f_battery_q, _r,
                                                                                            supply_node,
                                                                                            demand_node, return_node,
                                                                                            supply_loc,
                                                                                            demand_loc, return_loc)
-                                    """
+
                                 supply_node.f_battery_q, supply_node.e_battery_q = 1, 0
                                 demand_node.f_battery_q, demand_node.e_battery_q = -1, 1
                                 return_node.f_battery_q, return_node.e_battery_q = 0, -1
@@ -297,10 +299,9 @@ class VRP:
         self.__record_current_routes()
         if sol_found:
             self.__implement_best_ans(best_ans)
-        return
-    '''
+        return sol_found
 
-    def create_initial_solution_improved(self):
+    def best_insertion_improved(self):
 
         sol_found = False
         best_ans = None
@@ -352,16 +353,17 @@ class VRP:
                             insert_node1_after_node_2(demand_node, supply_node)
                             demand_loc = -1
                             flag_2 = True
-                            flag_2_1, f_2, e_2 = check_load_feasibility_from_node1_to_node2(supply_node, demand_node,
-                                                                                            f_1,
-                                                                                            e_1,
-                                                                                            self.vehicle_capacity_limit[
-                                                                                                _r])
 
                             while flag_2 and (
                                     supply_node.prev.loc == supply_node.after.loc and supply_node.prev.get_type() == supply_node.after.get_type()
                                     and supply_node.prev.loc != supply_node.loc and supply_node.prev.get_type() == supply_node.get_type()) is False:
 
+                                flag_2_1, f_2, e_2 = check_load_feasibility_from_node1_to_node2(supply_node,
+                                                                                                demand_node,
+                                                                                                f_1,
+                                                                                                e_1,
+                                                                                                self.vehicle_capacity_limit[
+                                                                                                    _r])
                                 add_dis = add_dis - self.call_dis(demand_node.prev.loc,
                                                                   demand_node.after.loc) + self.call_dis(
                                     demand_node.prev.loc, demand_node.loc) + self.call_dis(demand_node.loc,
@@ -375,16 +377,16 @@ class VRP:
                                     return_loc = -1
                                     insert_node1_after_node_2(return_node, demand_node)
                                     flag_3 = True
-                                    flag_3_1, f_3, e_3 = check_load_feasibility_from_node1_to_node2(demand_node,
-                                                                                                    return_node,
-                                                                                                    f_2,
-                                                                                                    e_2,
-                                                                                                    self.vehicle_capacity_limit[
-                                                                                                        _r])
 
                                     while flag_3 and (
                                             demand_node.prev.loc == demand_node.after.loc and demand_node.prev.get_type() == demand_node.after.get_type()
                                             and demand_node.prev.loc != demand_node.loc and demand_node.prev.get_type() == demand_node.get_type()) is False:
+                                        flag_3_1, f_3, e_3 = check_load_feasibility_from_node1_to_node2(demand_node,
+                                                                                                        return_node,
+                                                                                                        f_2,
+                                                                                                        e_2,
+                                                                                                        self.vehicle_capacity_limit[
+                                                                                                            _r])
                                         return_loc += 1
                                         add_dis = add_dis - self.call_dis(return_node.prev.loc,
                                                                           return_node.after.loc) + self.call_dis(
@@ -456,13 +458,6 @@ class VRP:
                                             return_node.prev.loc, return_node.loc) - self.call_dis(return_node.loc,
                                                                                                    return_node.after.loc)
                                         flag_3 = move_node_to_tail(return_node, self.route_tails[_r])
-                                        f_3 += return_node.prev.f_battery_q
-                                        e_3 += return_node.prev.e_battery_q
-                                        flag_3_1, _, _ = check_load_feasibility_from_node1_to_node2(return_node,
-                                                                                                    return_node, f_3,
-                                                                                                    e_3,
-                                                                                                    self.vehicle_capacity_limit[
-                                                                                                        _r])
 
                                     remove_node_1(return_node)
                                 # 快进到此处2
@@ -471,12 +466,6 @@ class VRP:
                                     demand_node.prev.loc, demand_node.loc) - self.call_dis(demand_node.loc,
                                                                                            demand_node.after.loc)
                                 flag_2 = move_node_to_tail(demand_node, self.route_tails[_r])
-                                f_2 += demand_node.prev.f_battery_q
-                                e_2 += demand_node.prev.e_battery_q
-                                flag_2_1, _, _ = check_load_feasibility_from_node1_to_node2(demand_node, demand_node,
-                                                                                            f_2, e_2,
-                                                                                            self.vehicle_capacity_limit[
-                                                                                                _r])
 
                             remove_node_1(demand_node)
                         # 快进到此处1
@@ -492,7 +481,7 @@ class VRP:
                                                                                     self.vehicle_capacity_limit[_r])
 
                     remove_node_1(supply_node)
-        self.__record_current_routes()
+        # self.__record_current_routes()
         if sol_found:
             self.__implement_best_ans(best_ans)
         return sol_found
@@ -514,6 +503,8 @@ class VRP:
         insert_node1_after_node_2(return_node, demand_node, best_ans[5][1])
         self.__record_current_routes()
         self.__record_used_vehicle_num()
+        # print(self.record_routes)
+        # self.print_route_load()
         return
 
     @classmethod
@@ -548,14 +539,46 @@ class VRP:
             else:
                 return pre_best_ans
 
+    def print_route_load(self):
+        for _r, _head in enumerate(self.route_heads):
+            _f = 0
+            _e = 0
+            _node = _head
+            while _node != self.route_tails[_r]:
+                _f += _node.f_battery_q
+                _e += _node.e_battery_q
+                print(_f, _e)
+                _node = _node.after
+
+    def remove_supplys_and_related_demands(self, _supplys):
+        _nodes2remove = set()
+        for _r, _head in enumerate(self.route_heads):
+            _node = _head
+            while _node != self.route_tails[_r]:
+                if _node.loc in _supplys and _node.get_type() == 5:
+                    _nodes2remove.add(_node)
+                    _nodes2remove.update(set(_node.related_nodes))
+                _node = _node.after
+        for _node in _nodes2remove:
+            _node.related_nodes = None
+            if _node.get_type() == 5:
+                self.supply_counter[_node.loc] += _node.f_battery_q
+            if _node.get_type() == -4:
+                self.demand_counter[_node.loc] += _node.e_battery_q
+            remove_node_1(_node)
+        # 需要修改total_dis, used_vehicle_num, vehicle_dis, vehicle_cost
+        self.__record_current_routes()
+        self.__record_used_vehicle_num()
+        self.__recalculate_dis()
+        return
+
 
 if __name__ == '__main__':
     _vrp_instance = VRP()
     _vrp_instance.init_vehicle_routes()
     _vrp_instance.create_initial_solution_improved()
+    _vrp_instance.remove_supplys_and_related_demands({9})
     print(_vrp_instance.total_dis)
     print(_vrp_instance.record_routes)
-    _vrp_instance.create_initial_solution_improved()
-    print(_vrp_instance.total_dis)
-    print(_vrp_instance.record_routes)
+    _vrp_instance.print_route_load()
     print('finished')
