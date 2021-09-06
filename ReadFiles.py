@@ -44,7 +44,7 @@ def get_soloman_cor(filepath):
     return _mat[:, 1:3]
 
 
-def transform_soloman(filepath='.\TempFiles\C101_25.txt'):
+def transform_soloman(filepath='.\TempFiles\C101.txt'):
     _info, _mat = read_single_soloman(filepath)
     _vehicle_num, _capacity, _dis_mat, _demand, _t_win, _t_ser = resolve_soloman(_info, _mat)
 
