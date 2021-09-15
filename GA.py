@@ -202,7 +202,7 @@ if __name__ == '__main__':
     """================================算法参数设置============================="""
     myAlgorithm = soea_psy_EGA_templet_1(problem, population)
     # myAlgorithm = soea_psy_EGA_templet_2(problem, population)
-    myAlgorithm.MAXGEN = 200 # 最大进化代数
+    myAlgorithm.MAXGEN = 10 # 最大进化代数
     myAlgorithm.logTras = 1  # 设置每隔多少代记录日志，若设置成0则表示不记录日志
     myAlgorithm.verbose = True  # 设置是否打印输出日志信息
     myAlgorithm.drawing = 0  # 设置绘图方式（0：不绘图；1：绘制结果图；2：绘制目标空间过程动画；3：绘制决策空间过程动画）
