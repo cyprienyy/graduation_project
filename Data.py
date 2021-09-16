@@ -30,7 +30,7 @@ demands = []
 supply_count = dict()
 demand_count = dict()
 
-pos = resolve_self_created_case('TestSets/C101_test.csv')
+pos = resolve_self_created_case('TestSets/bp_test.csv')
 station_num, vehicle_capacity, H = map(int, pos[0])
 
 vehicle_capacity = 200

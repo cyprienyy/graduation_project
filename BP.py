@@ -104,7 +104,7 @@ def BP():
             nodes_rel[i] = _s
             f_node[i] = 0
             e_node[i] = -1
-            return_supply[i] = i - count + 1
+            return_supply[i] = i - tmp_count + 1
         count += supply_count[_s]
 
     nodes_rel[count] = 0
@@ -116,11 +116,12 @@ def BP():
     supply_num = sum(supply_count.values())
     demand_num = sum(demand_count.values())
 
-    n_r = np.ones((count, 3))
+    n_r = np.ones((tmp_count, 2))
     c_r = np.zeros(n_r.shape[1])
-    c_r[0] = 2298
-    c_r[1] = 3157
-    c_r[2] = 2653
+    n_r[:, 0] = np.array([0, 1, 0, 0, 1, 0])
+    n_r[:, 1] = np.array([0, 0, 0, 1, 0, 1])
+    c_r[0] = 446
+    c_r[1] = 484
 
     try:
         MainProbRelax = gp.Model()  # 松弛后的列生成主问题
@@ -191,6 +192,9 @@ def BP():
         sub_problem.update()
 
         # sub_problem.optimize()
+        # for v in sub_problem.getVars():
+        #     if v.X != 0.0:
+        #         print('%s %g' % (v.VarName, v.X))
 
         def label_setting(label_set=label_set, label=label):
             # 成本，时间，满电电池数，缺电电池数，拜访情况列表, dominates
@@ -262,6 +266,8 @@ def BP():
 
     except AttributeError:
         print('Encountered an attribute error')
+    return
 
-    if __name__ == "__main__":
-        BP()
+
+if __name__ == "__main__":
+    BP()
