@@ -7,6 +7,17 @@ from collections import deque, Counter
 
 def compare_label1_label2(label1, label2):
     # 0即无关系，-1代表label1 dominates，1代表label2 dominates
+    label_1_flag = True
+    label_2_flag = True
+    for i, visited in enumerate(label1.visited):
+        if visited > label2.visited[i]:
+            label_2_flag = False
+        if visited < label2.visited[i]:
+            label_1_flag = False
+    if label_1_flag is True and label1.cost <= label2.cost and label1.time <= label2.time:
+        return -1
+    if label_2_flag is True and label2.cost <= label1.cost and label2.time <= label1.time:
+        return 1
     return 0
 
 
@@ -22,12 +33,12 @@ class label_set():
             res = compare_label1_label2(old_label, label)
             if res == -1:
                 flag = False
-                label[5] = True
+                label.dominated = True
                 _new_deque.append(old_label)
             elif res == 0:
                 _new_deque.append(old_label)
             elif res == 1:
-                old_label[5] = True
+                old_label.dominated = True
         if flag is True:
             _new_deque.append(label)
         self._deque = _new_deque
@@ -214,8 +225,15 @@ def BP():
                 if _label.dominated is False and _label.place != count:
                     # print('开始拓展')
                     i = _label.place
+
+                    _prev_extend_point = None
+                    _prev_extend_point_type = None
+
                     for j, to_visit in enumerate(_label.visited):
-                        if to_visit == 0:
+                        if to_visit == 0 and (nodes_rel[j] != _prev_extend_point or (
+                                5 * f_node[j] - e_node[j]) != _prev_extend_point_type):
+                            _prev_extend_point = nodes_rel[j]
+                            _prev_extend_point_type = 5 * f_node[j] - e_node[j]
                             if i != count and j != 0 and i != j and not (
                                     i == 0 and j in demand_nodes + return_nodes) and not (
                                     1 <= i <= (supply_num + demand_num) and j == count) and not (
