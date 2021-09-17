@@ -28,8 +28,8 @@ class label_set():
                 _new_deque.append(old_label)
             elif res == 1:
                 old_label[5] = True
-            if flag is True:
-                _new_deque.append(label)
+        if flag is True:
+            _new_deque.append(label)
         self._deque = _new_deque
 
     def get_best(self):
@@ -53,7 +53,7 @@ class label():
         self.place = place
         self.count = Counter()
 
-    def extend(self, cost_add, time_add, f_add, e_add, des, des_type):
+    def extend(self, cost_add, time_add, f_add, e_add, des, des_point, des_type):
         _new_label = label(len(self.visited), des)
         _new_label.cost = self.cost + cost_add
         _new_label.time = self.time + time_add
@@ -63,11 +63,12 @@ class label():
         _new_label.visited[des] = 1
         _new_label.count = self.count.copy()
         if des_type == 5:
-            _new_label.count[des] += 1
+            _new_label.count[des_point] += 1
         elif des_type == 1:
-            _new_label.count[des] -= 1
-        if _new_label.count[des] >= 0 and _new_label.time <= H and _new_label.f >= 0 and _new_label.e >= 0 and (
-                _new_label.f + _new_label.e) < vehicle_capacity:
+            _new_label.count[des_point] -= 1
+        if _new_label.count[des_point] >= 0 and _new_label.time <= H and _new_label.f >= 0 and _new_label.e >= 0 and (
+                _new_label.f + _new_label.e) <= vehicle_capacity and not (
+                des_type == 0 and (_new_label.f != 0 or _new_label.e != 0)):
             return _new_label
         else:
             return None
@@ -211,7 +212,7 @@ def BP():
             while UL:
                 _label = UL.pop()
                 if _label.dominated is False and _label.place != count:
-                    print('开始拓展')
+                    # print('开始拓展')
                     i = _label.place
                     for j, to_visit in enumerate(_label.visited):
                         if to_visit == 0:
@@ -222,7 +223,7 @@ def BP():
                                     count > j > (supply_num + demand_num) and return_supply[j] == i):
                                 _new_label = _label.extend(x_ij[i, j].obj, distance_graph[nodes_rel[i], nodes_rel[j]],
                                                            f_node[j], e_node[j],
-                                                           j, 5 * f_node[j] - e_node[j])
+                                                           j, nodes_rel[j], 5 * f_node[j] - e_node[j])
                                 if _new_label is not None:
                                     UL.append(_new_label)
                                     TL[j].add_label(_new_label)
