@@ -7,6 +7,7 @@ from collections import deque, Counter, defaultdict
 
 def compare_label1_label2(label1, label2):
     # 0即无关系，-1代表label1 dominates，1代表label2 dominates
+    # 判断dominates的条件需要考量
     label_1_flag = True
     label_2_flag = True
     for i, visited in enumerate(label1.visited):
@@ -22,10 +23,34 @@ def compare_label1_label2(label1, label2):
 
 
 def compare_label1_label2_1(label1, label2):
+    # 判断dominates的条件需要考量
+    label_1_flag = True
+    label_2_flag = True
+    for i, visited in enumerate(label1.visited):
+        if visited > label2.visited[i]:
+            label_1_flag = False
+        if visited < label2.visited[i]:
+            label_2_flag = False
+    if label_1_flag is True and label1.cost <= label2.cost and label1.time <= label2.time:
+        return -1
+    if label_2_flag is True and label2.cost <= label1.cost and label2.time <= label1.time:
+        return 1
     return 0
 
 
 def compare_label1_label2_2(label1, label2):
+    # 判断dominates的条件需要考量
+    label_1_flag = True
+    label_2_flag = True
+    for i in supplys + demands:
+        if label1.count[i] > label2.count[i]:
+            label_1_flag = False
+        if label1.count[i] < label2.count[i]:
+            label_2_flag = False
+    if label_1_flag is True and label1.cost <= label2.cost and label1.time <= label2.time:
+        return -1
+    if label_2_flag is True and label2.cost <= label1.cost and label2.time <= label1.time:
+        return 1
     return 0
 
 
@@ -52,18 +77,18 @@ class label_set:
         self.deque = _new_deque
 
     def get_best(self):
-        if len(self._deque) == 0:
+        if len(self.deque) == 0:
             raise Exception('没有找到任何列')
         res = float('inf')
         _label = None
-        for _label in self._deque:
+        for _label in self.deque:
             if _label.cost < res:
                 _best = _label
                 res = _label.cost
         return _label.cost, _label.time, np.array(_label.visited[1:-1])
 
     def print_paths(self):
-        for _label in self._deque:
+        for _label in self.deque:
             print(_label.path)
 
 
@@ -163,21 +188,30 @@ class label_1():
 
 class label_graph:
     def __init__(self):
-        self.visited = set()
         self.paths = list()
         self.cost = 0
         self.time = 0
         self.place = 0
         self.dominated = False
+        self.count = Counter()
 
-    def extend(self, cost_add, time_add, des_point, path, points):
+    def extend(self, cost_add, time_add, des_point, path, points, f_node, e_node, nodes_rel):
         _new_label = label_graph()
         _new_label.cost = self.cost + cost_add
         _new_label.time = self.time + time_add
         _new_label.place = des_point
         _new_label.paths = self.paths + path
-        if _new_label.time <= H and len(self.visited & points) == 0:
-            _new_label.visited = self.visited | points
+        _new_label.count = self.count.copy()
+        for j in points:
+            if 5 * f_node[j] - e_node[j] == 5:
+                _new_label.count[nodes_rel[j]] += 1
+                if _new_label.count[nodes_rel[j]] > supply_count[nodes_rel[j]]:
+                    return None
+            elif 5 * f_node[j] - e_node[j] == -6:
+                _new_label.count[nodes_rel[j]] += 1
+                if _new_label.count[nodes_rel[j]] > demand_count[nodes_rel[j]]:
+                    return None
+        if _new_label.time <= H:
             return _new_label
         else:
             return
@@ -226,6 +260,7 @@ def BP():
     supply_num = sum(supply_count.values())
     demand_num = sum(demand_count.values())
 
+    '''
     n_r = np.ones((tmp_count, 2))
     c_r = np.zeros(n_r.shape[1])
     n_r[:, 0] = np.array([0, 1, 0, 0, 1, 0])
@@ -246,12 +281,43 @@ def BP():
         demand_constr = MainProbRelax.addConstrs(
             gp.quicksum(n_r[i, r] * X_r[r] for r in range(n_r.shape[1])) == 1 for
             i in demand_nodes)
+    '''
+    n_r = np.ones((len(supplys) + len(demands), 2))
+    c_r = np.zeros(n_r.shape[1])
+    n_r[:, 0] = np.array([1, 0, 1, 0])
+    n_r[:, 1] = np.array([0, 1, 0, 1])
+    c_r[0] = 446
+    c_r[1] = 484
+
+    try:
+        MainProbRelax = gp.Model()  # 松弛后的列生成主问题
+
+        # 构造主问题模型
+        # 添加变量
+        X_r = MainProbRelax.addVars(n_r.shape[1], lb=0.0, ub=1.0, obj=c_r, vtype=GRB.CONTINUOUS, name='X_r')
+        # 添加约束
+        i = 0
+        for j in supplys:
+            MainProbRelax.addConstr(gp.quicksum(n_r[i, r] * X_r[r] for r in range(n_r.shape[1])) <= supply_count[j])
+            i = i + 1
+        for j in demands:
+            MainProbRelax.addConstr(gp.quicksum(n_r[i, r] * X_r[r] for r in range(n_r.shape[1])) == demand_count[j])
+            i = i + 1
         MainProbRelax.setAttr(GRB.Attr.ModelSense, GRB.MINIMIZE)
         # 求解
         MainProbRelax.optimize()
 
         # 获得对偶值
-        Dualsolution = MainProbRelax.getAttr("Pi", MainProbRelax.getConstrs())
+        _Dualsolution = MainProbRelax.getAttr("Pi", MainProbRelax.getConstrs())
+
+        Dualsolution = [0]
+        i = 0
+        for j in supplys:
+            Dualsolution = Dualsolution + [_Dualsolution[i] / supply_count[j]] * supply_count[j]
+            i = i + 1
+        for j in demands:
+            Dualsolution = Dualsolution + [_Dualsolution[i] / demand_count[j]] * demand_count[j]
+            i = i + 1
 
         # 构造子问题模型
         sub_problem = gp.Model()
@@ -347,6 +413,7 @@ def BP():
             return TL[-1].get_best()
 
         def label_setting_1(label_set=label_set, label=label_1):
+            # 注意此时的路径长度是算入了depot距离的，所以利用这两个函数进行处理
 
             def avoid_depot_distance_graph(_s, _t):
                 if nodes_rel[_s] == 0 or nodes_rel[_t] == 0:
@@ -409,7 +476,6 @@ def BP():
                                     TL[j].add_label(_new_label, compare_label1_label2_1)
 
             return TL[-1].deque
-            # 注意此时的路径长度是算入了depot距离的，所以后续要进行处理
 
         def label_setting_graph(sub_routes_obtained):
             label_0 = label_graph()
@@ -430,7 +496,7 @@ def BP():
                 sub_routes_set[k].append((distance_graph[k][0], distance_graph[k][0], nodes_cnt - 1, [k, 0], set()))
 
             for _label in sub_routes_obtained:
-                if len(_label.path) > 2:
+                if len(_label.path) > 2 and _label.dominated is False:
                     sub_routes_set[nodes_rel[_label.path[1]]].append(
                         (_label.cost, _label.time, nodes_rel[_label.path[-2]], _label.path[1:-1],
                          set(_label.path[1:-1])))
@@ -442,12 +508,12 @@ def BP():
                     i = _label.place
                     for _sub_route in sub_routes_set[i]:
                         _new_label = _label.extend(_sub_route[0], _sub_route[1], _sub_route[2], _sub_route[3],
-                                                   _sub_route[4])
+                                                   _sub_route[4], f_node, e_node, nodes_rel)
                         if _new_label is not None:
                             UL.append(_new_label)
                             TL[_new_label.place].add_label(_new_label, compare_label1_label2_2)
 
-            return TL[count].get_best()
+            return TL[count].get_best_2()
 
         def return_val_and_coeff():
             return 0, 0
