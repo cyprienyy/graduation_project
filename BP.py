@@ -91,6 +91,20 @@ class label_set:
         for _label in self.deque:
             print(_label.path)
 
+    def get_best_2(self):
+        if len(self.deque) == 0:
+            raise Exception('没有找到任何列')
+        res = float('inf')
+        _label = None
+        for _label in self.deque:
+            if _label.cost < res:
+                _best = _label
+                res = _label.cost
+        array = []
+        for j in supplys + demands:
+            array.append(_label.count[j])
+        return _label.cost, _label.time, array
+
 
 class label:
     def __init__(self, nodes_cnt, place):
@@ -519,7 +533,7 @@ def BP():
             return 0, 0
 
         _tmp = label_setting_1()
-        _ans = label_setting_graph(_tmp)
+        column_cost, column_val, columnCoeff = label_setting_graph(_tmp)
 
         '''
         column_cost, column_val, columnCoeff = label_setting()
@@ -536,7 +550,8 @@ def BP():
             # 求解
             MainProbRelax.optimize()
             # 修改子问题目标函数系数
-            Dualsolution = MainProbRelax.getAttr("Pi", MainProbRelax.getConstrs())
+            _Dualsolution = MainProbRelax.getAttr("Pi", MainProbRelax.getConstrs())
+            # 需要改变Dualsolution
             adjust_obj_coeff()
             sub_problem.update()
             column_cost, column_val, columnCoeff = label_setting()
