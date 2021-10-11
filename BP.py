@@ -7,14 +7,13 @@ from collections import deque, Counter, defaultdict
 
 def compare_label1_label2(label1, label2):
     # 0即无关系，-1代表label1 dominates，1代表label2 dominates
-    # 判断dominates的条件需要考量
     label_1_flag = True
     label_2_flag = True
     for i, visited in enumerate(label1.visited):
         if visited > label2.visited[i]:
-            label_2_flag = False
-        if visited < label2.visited[i]:
             label_1_flag = False
+        if visited < label2.visited[i]:
+            label_2_flag = False
     if label_1_flag is True and label1.cost <= label2.cost and label1.time <= label2.time:
         return -1
     if label_2_flag is True and label2.cost <= label1.cost and label2.time <= label1.time:
@@ -26,10 +25,15 @@ def compare_label1_label2_1(label1, label2):
     # 判断dominates的条件需要考量
     label_1_flag = True
     label_2_flag = True
-    for i, visited in enumerate(label1.visited):
-        if visited > label2.visited[i]:
+    if label1.f != label2.f or label1.visited_supply[0] != label2.visited_supply[0]:
+        return 0
+    for i in supplys:
+        if (label1.count[i] > 0 and label2.count[i] == 0) or (label1.count[i] == 0 and label2.count[i] > 0):
+            return 0
+    for i in supplys + demands:
+        if label1.count[i] > label2.count[i]:
             label_1_flag = False
-        if visited < label2.visited[i]:
+        if label1.count[i] < label2.count[i]:
             label_2_flag = False
     if label_1_flag is True and label1.cost <= label2.cost and label1.time <= label2.time:
         return -1
@@ -296,6 +300,8 @@ def BP():
             gp.quicksum(n_r[i, r] * X_r[r] for r in range(n_r.shape[1])) == 1 for
             i in demand_nodes)
     '''
+
+    # 需要增加得到初始解的过程
     n_r = np.ones((len(supplys) + len(demands), 2))
     c_r = np.zeros(n_r.shape[1])
     n_r[:, 0] = np.array([1, 0, 1, 0])
@@ -456,7 +462,6 @@ def BP():
                 _label = UL.pop()
                 if _label.dominated is False and _label.place != count:
                     # print('开始拓展')
-
                     if _label.f == 0 and _label.e == 0 and _label.place != 0:
                         i = _label.place
                         j = nodes_cnt - 1
