@@ -33,12 +33,12 @@ class label_set:
         if len(self.deque) == 0:
             raise Exception('没有找到任何列')
         res = float('inf')
-        _label = None
+        _best = None
         for _label in self.deque:
             if _label.cost < res:
                 _best = _label
                 res = _label.cost
-        return _label.cost, _label.time, np.array(_label.visited[1:-1])
+        return _best
 
     def print_paths(self):
         for _label in self.deque:
@@ -48,15 +48,15 @@ class label_set:
         if len(self.deque) == 0:
             raise Exception('没有找到任何列')
         res = float('inf')
-        _label = None
+        _best = None
         for _label in self.deque:
             if _label.cost < res:
                 _best = _label
                 res = _label.cost
         array = []
         for j in supplys + demands:
-            array.append(_label.count[j])
-        return _label.cost, _label.time, array
+            array.append(_best.count[j])
+        return _best.cost, _best.time, array
 
     def clear(self):
         self.deque = deque()
@@ -257,8 +257,14 @@ class OneLevel:
                         if i != count and j != 0 and i != j and not (
                                 i == 0 and j in demand_nodes + return_nodes) and not (
                                 1 <= i <= (supply_num + demand_num) and j == count) and not ((
-                                count > i > (supply_num + demand_num) and return_supply[i] == j) or (
-                                count > j > (supply_num + demand_num) and return_supply[j] == i)) and not (
+                                                                                                     count > i > (
+                                                                                                     supply_num + demand_num) and
+                                                                                                     return_supply[
+                                                                                                         i] == j) or (
+                                                                                                     count > j > (
+                                                                                                     supply_num + demand_num) and
+                                                                                                     return_supply[
+                                                                                                         j] == i)) and not (
                                 1 <= j <= supply_num and _label.e != 0) and not (
                                 j > supply_num + demand_num and _label.f != 0):
                             _new_label = _label.extend(self.sub_problem.x_ij[i, j].obj,
@@ -270,7 +276,15 @@ class OneLevel:
                                 self.TL[j].add_label(_new_label, self.compare_label1_label2)
 
     def return_result(self):
-        return self.TL[-1].get_best()
+        _label = self.TL[-1].get_best()
+        res = Counter()
+        _res = [0]
+        for i in _label.path:
+            if 5 * f_node[i] - e_node[i] in (5, -6):
+                res[nodes_rel[i]] += 1
+        for i in supplys + demands:
+            _res.append(res[i])
+        return _label.cost, _label.time, _res
 
     def clear(self):
         self.UL = deque()
@@ -548,4 +562,5 @@ if __name__ == "__main__":
     one_level.sub_problem = sp
     one_level.label_setting()
     one_level.TL[-1].print_paths()
+    print(one_level.return_result())
     print('finished')
