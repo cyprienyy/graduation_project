@@ -42,7 +42,7 @@ class label_set:
 
     def print_paths(self):
         for _label in self.deque:
-            print(_label.path)
+            print(_label.cost, _label.path)
 
     def get_best_2(self):
         if len(self.deque) == 0:
@@ -71,6 +71,7 @@ class MainProblem:
         self.n_r[:, 1] = np.array([0, 1, 0, 1])
         self.c_r[0] = 446
         self.c_r[1] = 484
+        self.paths = [[], []]
 
         self.MainProbRelax = gp.Model()  # 松弛后的列生成主问题
 
@@ -106,6 +107,14 @@ class MainProblem:
     def optimize(self):
         self.MainProbRelax.optimize()
 
+    def add_column(self, columnCoeff, columnVal, columnPath):
+        column = gp.Column(columnCoeff, self.MainProbRelax.getConstrs())
+        self.MainProbRelax.addVar(obj=columnVal, lb=0.0, ub=1.0, vtype=GRB.CONTINUOUS, name="CG", column=column)
+        self.n_r = np.column_stack((self.n_r, columnCoeff))
+        self.c_r = np.append(self.c_r, columnVal)
+        self.paths.append(columnPath)
+        return
+
 
 class SubProblem:
     def __init__(self):
@@ -139,6 +148,9 @@ class SubProblem:
         self.sub_problem.addConstrs(
             self.t_i[i] + 1 <= self.t_i[j] + (nodes_cnt + 1) * (1 - self.x_ij[i, j]) for i, j in lis_i_j)
         self.sub_problem.addConstrs(self.t_i[i] >= self.t_i[return_supply[i]] + 1 for i in return_nodes)
+        # self.sub_problem.addConstrs(self.z_i[i] == 0 for i in supply_nodes)
+        # self.sub_problem.addConstrs(self.y_i[i] == 0 for i in return_nodes)
+        self.sub_problem.setAttr(GRB.Attr.ModelSense, GRB.MINIMIZE)
         self.sub_problem.update()
 
     def adjust_obj_coeff(self, Dualsolution):
@@ -152,8 +164,8 @@ class SubProblem:
 
     def optimize(self):
         self.sub_problem.optimize()
-        for v in self.sub_problem.getVars():
-            print('%s %g' % (v.VarName, v.X))
+        # for v in self.sub_problem.getVars():
+        # print('%s %g' % (v.VarName, v.X))
 
 
 class label:
@@ -167,6 +179,7 @@ class label:
         self.dominated = False
         self.place = place
         self.count = Counter()
+        self.path = [0]
 
     def extend(self, cost_add, time_add, f_add, e_add, des, des_point, des_type):
         _new_label = label(len(self.visited), des)
@@ -184,6 +197,7 @@ class label:
         if _new_label.count[des_point] >= 0 and _new_label.time <= H and _new_label.f >= 0 and _new_label.e >= 0 and (
                 _new_label.f + _new_label.e) <= vehicle_capacity and not (
                 des_type == 0 and (_new_label.f != 0 or _new_label.e != 0)):
+            _new_label.path = self.path + [des]
             return _new_label
         else:
             return None
@@ -201,6 +215,11 @@ class OneLevel:
     @staticmethod
     def compare_label1_label2(label1, label2):
         # 0即无关系，-1代表label1 dominates，1代表label2 dominates
+        if label1.f != label2.f:
+            return 0
+        for i in supplys:
+            if (label1.count[i] > 0 and label2.count[i] == 0) or (label1.count[i] == 0 and label2.count[i] > 0):
+                return 0
         label_1_flag = True
         label_2_flag = True
         for i, visited in enumerate(label1.visited):
@@ -237,9 +256,11 @@ class OneLevel:
                         _prev_extend_point_type = 5 * f_node[j] - e_node[j]
                         if i != count and j != 0 and i != j and not (
                                 i == 0 and j in demand_nodes + return_nodes) and not (
-                                1 <= i <= (supply_num + demand_num) and j == count) and not (
+                                1 <= i <= (supply_num + demand_num) and j == count) and not ((
                                 count > i > (supply_num + demand_num) and return_supply[i] == j) or (
-                                count > j > (supply_num + demand_num) and return_supply[j] == i):
+                                count > j > (supply_num + demand_num) and return_supply[j] == i)) and not (
+                                1 <= j <= supply_num and _label.e != 0) and not (
+                                j > supply_num + demand_num and _label.f != 0):
                             _new_label = _label.extend(self.sub_problem.x_ij[i, j].obj,
                                                        distance_graph[nodes_rel[i], nodes_rel[j]],
                                                        f_node[j], e_node[j],
@@ -513,3 +534,18 @@ class TwoLevelGraph:
         self.UL = deque()
         for j in supplys + [0, nodes_cnt - 1]:
             self.TL[j].clear()
+
+
+if __name__ == "__main__":
+    bp = MainProblem()
+    bp.optimize()
+    _dual_sol = bp.get_dual_solution()
+    sp = SubProblem()
+    sp.adjust_obj_coeff(_dual_sol)
+    sp.optimize()
+    print(_dual_sol)
+    one_level = OneLevel()
+    one_level.sub_problem = sp
+    one_level.label_setting()
+    one_level.TL[-1].print_paths()
+    print('finished')

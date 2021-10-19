@@ -360,6 +360,8 @@ def BP():
         sub_problem.addConstr(x_ij.sum('*', count) == 1)
         sub_problem.addConstrs(
             x_ij.sum('*', i) == x_ij.sum(i, '*') for i in supply_nodes + demand_nodes + return_nodes)
+        sub_problem.addConstrs(
+            x_ij.sum('*', i) <=1 for i in supply_nodes + demand_nodes + return_nodes)
         sub_problem.addConstrs(x_ij.sum(i, '*') == x_ij.sum(return_supply[i], '*') for i in return_nodes)
         sub_problem.addConstr(
             gp.quicksum(x_ij[i, j] * distance_graph[nodes_rel[i], nodes_rel[j]] for i, j in lis_i_j) <= H)
@@ -387,10 +389,10 @@ def BP():
         adjust_obj_coeff()
         sub_problem.update()
 
-        # sub_problem.optimize()
-        # for v in sub_problem.getVars():
-        #     if v.X != 0.0:
-        #         print('%s %g' % (v.VarName, v.X))
+        sub_problem.optimize()
+        for v in sub_problem.getVars():
+            if v.X != 0.0:
+                print('%s %g' % (v.VarName, v.X))
 
         def label_setting(label_set=label_set, label=label):
             # 成本，时间，满电电池数，缺电电池数，拜访情况列表, dominates
