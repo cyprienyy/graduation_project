@@ -127,7 +127,6 @@ class SubProblem:
         self.t_i = self.sub_problem.addVars(nodes_cnt, lb=0.0, vtype=GRB.CONTINUOUS, name='t_i')
 
         # 添加约束
-        # 缺少一个强制取换还的约束
         self.sub_problem.addConstr(self.x_ij.sum(0, '*') == 1)
         self.sub_problem.addConstr(self.x_ij.sum('*', count) == 1)
         self.sub_problem.addConstrs(
@@ -148,8 +147,8 @@ class SubProblem:
         self.sub_problem.addConstrs(
             self.t_i[i] + 1 <= self.t_i[j] + (nodes_cnt + 1) * (1 - self.x_ij[i, j]) for i, j in lis_i_j)
         self.sub_problem.addConstrs(self.t_i[i] >= self.t_i[return_supply[i]] + 1 for i in return_nodes)
-        # self.sub_problem.addConstrs(self.z_i[i] == 0 for i in supply_nodes)
-        # self.sub_problem.addConstrs(self.y_i[i] == 0 for i in return_nodes)
+        self.sub_problem.addConstrs(self.z_i[i] == 0 for i in supply_nodes)
+        self.sub_problem.addConstrs(self.y_i[i] == 0 for i in return_nodes)
         self.sub_problem.setAttr(GRB.Attr.ModelSense, GRB.MINIMIZE)
         self.sub_problem.update()
 
@@ -256,15 +255,9 @@ class OneLevel:
                         _prev_extend_point_type = 5 * f_node[j] - e_node[j]
                         if i != count and j != 0 and i != j and not (
                                 i == 0 and j in demand_nodes + return_nodes) and not (
-                                1 <= i <= (supply_num + demand_num) and j == count) and not ((
-                                                                                                     count > i > (
-                                                                                                     supply_num + demand_num) and
-                                                                                                     return_supply[
-                                                                                                         i] == j) or (
-                                                                                                     count > j > (
-                                                                                                     supply_num + demand_num) and
-                                                                                                     return_supply[
-                                                                                                         j] == i)) and not (
+                                1 <= i <= (supply_num + demand_num) and j == count) and not (
+                                (count > i > (supply_num + demand_num) and return_supply[i] == j) or (
+                                count > j > (supply_num + demand_num) and return_supply[j] == i)) and not (
                                 1 <= j <= supply_num and _label.e != 0) and not (
                                 j > supply_num + demand_num and _label.f != 0):
                             _new_label = _label.extend(self.sub_problem.x_ij[i, j].obj,
@@ -278,7 +271,7 @@ class OneLevel:
     def return_result(self):
         _label = self.TL[-1].get_best()
         res = Counter()
-        _res = [0]
+        _res = []
         for i in _label.path:
             if 5 * f_node[i] - e_node[i] in (5, -6):
                 res[nodes_rel[i]] += 1
@@ -303,6 +296,7 @@ class label_1():
         self.dominated = False
         self.place = place
         self.current_type = 0
+        self.supply_demand_count = Counter()
         self.count = Counter()
         self.visited_supply = []
         self.visited_demand = []
@@ -319,7 +313,7 @@ class label_1():
         _new_label.visited_supply = self.visited_supply.copy()
         _new_label.visited_demand = self.visited_demand.copy()
         _new_label.visited_return = self.visited_return.copy()
-        _array = list()
+        _array = None
         if des_type == 5:
             _array = _new_label.visited_supply
         elif des_type == 1:
@@ -339,12 +333,16 @@ class label_1():
         _new_label.visited = self.visited.copy()
         _new_label.visited[des] = 1
         _new_label.count = self.count.copy()
+        _new_label.supply_demand_count = self.supply_demand_count.copy()
         _new_label.path = self.path + [des]
 
         if des_type == 5:
             _new_label.count[des_point] += 1
+            _new_label.supply_demand_count[des_point] += 1
         elif des_type == 1:
             _new_label.count[des_point] -= 1
+        elif des_type == -6:
+            _new_label.supply_demand_count[des_point] += 1
         if _new_label.count[des_point] >= 0 and _new_label.time <= H and _new_label.f >= 0 and _new_label.e >= 0 and (
                 _new_label.f + _new_label.e) <= vehicle_capacity and not (
                 des_type == 0 and (_new_label.f != 0 or _new_label.e != 0)):
@@ -374,9 +372,9 @@ class TwoLevelColumnGeneration:
             if (label1.count[i] > 0 and label2.count[i] == 0) or (label1.count[i] == 0 and label2.count[i] > 0):
                 return 0
         for i in supplys + demands:
-            if label1.count[i] > label2.count[i]:
+            if label1.supply_demand_count[i] > label2.supply_demand_count[i]:
                 label_1_flag = False
-            if label1.count[i] < label2.count[i]:
+            if label1.supply_demand_count[i] < label2.supply_demand_count[i]:
                 label_2_flag = False
         if label_1_flag is True and label1.cost <= label2.cost and label1.time <= label2.time:
             return -1
@@ -430,9 +428,15 @@ class TwoLevelColumnGeneration:
                         _prev_extend_point_type = 5 * f_node[j] - e_node[j]
                         if i != count and j != 0 and i != j and not (
                                 i == 0 and j in demand_nodes + return_nodes) and not (
-                                1 <= i <= (supply_num + demand_num) and j == count) and not (
-                                count > i > (supply_num + demand_num) and return_supply[i] == j) or (
-                                count > j > (supply_num + demand_num) and return_supply[j] == i):
+                                1 <= i <= (supply_num + demand_num) and j == count) and not ((
+                                                                                                     count > i > (
+                                                                                                     supply_num + demand_num) and
+                                                                                                     return_supply[
+                                                                                                         i] == j) or (
+                                                                                                     count > j > (
+                                                                                                     supply_num + demand_num) and
+                                                                                                     return_supply[
+                                                                                                         j] == i)):
                             _new_label = _label.extend(avoid_depot_x_ij(i, j), avoid_depot_distance_graph(i, j),
                                                        f_node[j], e_node[j],
                                                        j, nodes_rel[j], 5 * f_node[j] - e_node[j])
@@ -556,11 +560,15 @@ if __name__ == "__main__":
     _dual_sol = bp.get_dual_solution()
     sp = SubProblem()
     sp.adjust_obj_coeff(_dual_sol)
-    sp.optimize()
-    print(_dual_sol)
-    one_level = OneLevel()
-    one_level.sub_problem = sp
-    one_level.label_setting()
-    one_level.TL[-1].print_paths()
-    print(one_level.return_result())
+    # sp.optimize()
+    # print(_dual_sol)
+    # one_level = OneLevel()
+    # one_level.sub_problem = sp
+    # one_level.label_setting()
+    # # one_level.TL[-1].print_paths()
+    # column_cost, column_val, column_coeff = one_level.return_result()
+    # bp.add_column(column_coeff, column_val, [])
+    # bp.optimize()
+    # bp.MainProbRelax.write('main.sol')
+
     print('finished')
