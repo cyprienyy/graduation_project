@@ -313,7 +313,7 @@ class label_1():
         _new_label.visited_supply = self.visited_supply.copy()
         _new_label.visited_demand = self.visited_demand.copy()
         _new_label.visited_return = self.visited_return.copy()
-        _array = None
+        _array = []
         if des_type == 5:
             _array = _new_label.visited_supply
         elif des_type == 1:
@@ -352,7 +352,7 @@ class label_1():
 
 
 class TwoLevelColumnGeneration:
-    def __int__(self):
+    def __init__(self):
         self.sub_problem = None
         self.UL = deque()
         self.TL = list()
@@ -428,15 +428,10 @@ class TwoLevelColumnGeneration:
                         _prev_extend_point_type = 5 * f_node[j] - e_node[j]
                         if i != count and j != 0 and i != j and not (
                                 i == 0 and j in demand_nodes + return_nodes) and not (
-                                1 <= i <= (supply_num + demand_num) and j == count) and not ((
-                                                                                                     count > i > (
-                                                                                                     supply_num + demand_num) and
-                                                                                                     return_supply[
-                                                                                                         i] == j) or (
-                                                                                                     count > j > (
-                                                                                                     supply_num + demand_num) and
-                                                                                                     return_supply[
-                                                                                                         j] == i)):
+                                1 <= i <= (supply_num + demand_num) and j == count) and not (
+                                (count > i > (supply_num + demand_num) and return_supply[i] == j) or (
+                                count > j > (supply_num + demand_num) and return_supply[j] == i)) and not (
+                                i == 0 and j == count):
                             _new_label = _label.extend(avoid_depot_x_ij(i, j), avoid_depot_distance_graph(i, j),
                                                        f_node[j], e_node[j],
                                                        j, nodes_rel[j], 5 * f_node[j] - e_node[j])
@@ -560,6 +555,10 @@ if __name__ == "__main__":
     _dual_sol = bp.get_dual_solution()
     sp = SubProblem()
     sp.adjust_obj_coeff(_dual_sol)
+    two_level_cg = TwoLevelColumnGeneration()
+    two_level_cg.sub_problem = sp
+    two_level_cg.label_setting()
+    res = two_level_cg.return_result()
     # sp.optimize()
     # print(_dual_sol)
     # one_level = OneLevel()
