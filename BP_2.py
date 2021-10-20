@@ -459,14 +459,15 @@ class label_graph:
         self.dominated = False
         self.count = Counter()
 
-    def extend(self, cost_add, time_add, des_point, path, points, f_node, e_node, nodes_rel):
+    def extend(self, cost_add, time_add, des_point, path):
         _new_label = label_graph()
         _new_label.cost = self.cost + cost_add
         _new_label.time = self.time + time_add
         _new_label.place = des_point
         _new_label.paths = self.paths + path
         _new_label.count = self.count.copy()
-        for j in points:
+        # 消除points
+        for j in path:
             if 5 * f_node[j] - e_node[j] == 5:
                 _new_label.count[nodes_rel[j]] += 1
                 if _new_label.count[nodes_rel[j]] > supply_count[nodes_rel[j]]:
@@ -478,11 +479,11 @@ class label_graph:
         if _new_label.time <= H:
             return _new_label
         else:
-            return
+            return None
 
 
 class TwoLevelGraph:
-    def __int__(self):
+    def __init__(self):
         self.sub_problem = None
         self.UL = deque()
         self.TL = dict()
@@ -514,18 +515,21 @@ class TwoLevelGraph:
         self.TL[0].add_label(label_0, self.compare_label1_label2_2)
 
         sub_routes_set = defaultdict(list)
+        # 此处需要斟酌
+        # cost,time,终点,路径(经过的点)
         for j in [0] + supplys:
             for k in supplys:
                 if j != k:
-                    sub_routes_set[j].append((distance_graph[j][k], distance_graph[j][k], k, [j, k], set()))
+                    sub_routes_set[j].append((distance_graph[j][k], distance_graph[j][k], k, []))
         for k in supplys:
-            sub_routes_set[k].append((distance_graph[k][0], distance_graph[k][0], nodes_cnt - 1, [k, 0], set()))
+            sub_routes_set[k].append((distance_graph[k][0], distance_graph[k][0], nodes_cnt - 1, []))
 
         for _label in sub_routes_obtained:
-            if len(_label.path) > 2 and _label.dominated is False:
+            # 此处需要斟酌
+            if _label.dominated is False and \
+                    _label.cost < distance_graph[nodes_rel[_label.path[1]], [nodes_rel[_label.path[-2]]]]:
                 sub_routes_set[nodes_rel[_label.path[1]]].append(
-                    (_label.cost, _label.time, nodes_rel[_label.path[-2]], _label.path[1:-1],
-                     set(_label.path[1:-1])))
+                    (_label.cost, _label.time, nodes_rel[_label.path[-2]], _label.path[1:-1]))
 
         while self.UL:
             _label = self.UL.pop()
@@ -533,8 +537,7 @@ class TwoLevelGraph:
                 # print('开始拓展')
                 i = _label.place
                 for _sub_route in sub_routes_set[i]:
-                    _new_label = _label.extend(_sub_route[0], _sub_route[1], _sub_route[2], _sub_route[3],
-                                               _sub_route[4], f_node, e_node, nodes_rel)
+                    _new_label = _label.extend(_sub_route[0], _sub_route[1], _sub_route[2], _sub_route[3])
                     if _new_label is not None:
                         self.UL.append(_new_label)
                         self.TL[_new_label.place].add_label(_new_label, self.compare_label1_label2_2)
@@ -547,6 +550,7 @@ class TwoLevelGraph:
         self.UL = deque()
         for j in supplys + [0, nodes_cnt - 1]:
             self.TL[j].clear()
+        return
 
 
 if __name__ == "__main__":
@@ -559,6 +563,9 @@ if __name__ == "__main__":
     two_level_cg.sub_problem = sp
     two_level_cg.label_setting()
     res = two_level_cg.return_result()
+    two_level_g = TwoLevelGraph()
+    two_level_g.sub_problem = sp
+    two_level_g.label_setting_graph(res)
     # sp.optimize()
     # print(_dual_sol)
     # one_level = OneLevel()
