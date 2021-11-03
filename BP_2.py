@@ -559,22 +559,25 @@ if __name__ == "__main__":
     _dual_sol = bp.get_dual_solution()
     sp = SubProblem()
     sp.adjust_obj_coeff(_dual_sol)
-    two_level_cg = TwoLevelColumnGeneration()
-    two_level_cg.sub_problem = sp
-    two_level_cg.label_setting()
-    res = two_level_cg.return_result()
-    two_level_g = TwoLevelGraph()
-    two_level_g.sub_problem = sp
-    two_level_g.label_setting_graph(res)
-    # sp.optimize()
-    # print(_dual_sol)
-    # one_level = OneLevel()
-    # one_level.sub_problem = sp
-    # one_level.label_setting()
-    # # one_level.TL[-1].print_paths()
-    # column_cost, column_val, column_coeff = one_level.return_result()
-    # bp.add_column(column_coeff, column_val, [])
-    # bp.optimize()
-    # bp.MainProbRelax.write('main.sol')
+    # two_level_cg = TwoLevelColumnGeneration()
+    # two_level_cg.sub_problem = sp
+    # two_level_cg.label_setting()
+    # res = two_level_cg.return_result()
+    # two_level_g = TwoLevelGraph()
+    # two_level_g.sub_problem = sp
+    # two_level_g.label_setting_graph(res)
+    sp.optimize()
+    print(_dual_sol)
+    one_level = OneLevel()
+    one_level.sub_problem = sp
+    one_level.label_setting()
+    # one_level.TL[-1].print_paths()
+    column_cost, column_val, column_coeff = one_level.return_result()
+    bp.add_column(column_coeff, column_val, [])
+    bp.optimize()
+    bp.MainProbRelax.update()
+    _dual_sol = bp.get_dual_solution()
+    bp.MainProbRelax.write('main.sol')
+
 
     print('finished')
