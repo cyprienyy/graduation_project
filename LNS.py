@@ -1,6 +1,7 @@
 from collections import Counter
 import numpy as np
 from Data import *
+import random
 
 
 # dis_matrix = np.zeros((1, 1))
@@ -149,13 +150,18 @@ class VRP:
             self.record_routes.append([_node.loc])
             while _node != self.route_tails[i]:
                 _node = _node.after
-                self.record_routes[-1].append(_node.loc)
+                if _node.get_type() == -1:
+                    self.record_routes[-1].append(-_node.loc)
+                else:
+                    self.record_routes[-1].append(_node.loc)
 
+    """
     def create_initial_solution(self):
         flag = True
         while flag:
             flag = self.best_insertion()
         return
+    """
 
     def create_initial_solution_improved(self):
         flag = True
@@ -163,6 +169,7 @@ class VRP:
             flag = self.best_insertion_improved()
         return
 
+    """
     def best_insertion(self):
 
         sol_found = False
@@ -300,6 +307,7 @@ class VRP:
         if sol_found:
             self.__implement_best_ans(best_ans)
         return sol_found
+    """
 
     def best_insertion_improved(self):
 
@@ -340,10 +348,9 @@ class VRP:
                                                                                         _r])
                     while flag_1:
 
-                        add_dis = add_dis - self.call_dis(supply_node.prev.loc,
-                                                          supply_node.after.loc) + self.call_dis(
-                            supply_node.prev.loc, supply_node.loc) + self.call_dis(supply_node.loc,
-                                                                                   supply_node.after.loc)
+                        add_dis = add_dis - self.call_dis(supply_node.prev.loc, supply_node.after.loc) + \
+                                  self.call_dis(supply_node.prev.loc, supply_node.loc) + \
+                                  self.call_dis(supply_node.loc, supply_node.after.loc)
 
                         supply_loc += 1
                         # 此处开始快进1
@@ -493,9 +500,11 @@ class VRP:
                                                                                         self.vehicle_capacity_limit[_r])
 
                     remove_node_1(supply_node)
+                    """
 
                     if add_dis != 0 or demand_node.f_battery_q != -1 or demand_node.e_battery_q != 1 or demand_node.loc != _demand:
                         print('error')
+                    
 
                     supply_node.loc = _supply
                     supply_node.f_battery_q, supply_node.e_battery_q = 1, -1
@@ -620,6 +629,7 @@ class VRP:
                                                                                         self.vehicle_capacity_limit[_r])
 
                     remove_node_1(supply_node)
+                    """
 
         # self.__record_current_routes()
         # print(self.record_routes)
@@ -762,6 +772,28 @@ class VRP:
         self.__recalculate_dis()
         return
 
+    def remove_demands_and_related_demands(self, _demands):
+        _nodes2remove = set()
+        for _r, _head in enumerate(self.route_heads):
+            _node = _head
+            while _node != self.route_tails[_r]:
+                if _node.loc in _demands and _node.get_type() in {-4}:
+                    _nodes2remove.add(_node)
+                    _nodes2remove.update(set(_node.related_nodes))
+                _node = _node.after
+        for _node in _nodes2remove:
+            _node.related_nodes = None
+            if _node.get_type() in {4, 5}:
+                self.supply_counter[_node.loc] += _node.f_battery_q
+            if _node.get_type() == -4:
+                self.demand_counter[_node.loc] += _node.e_battery_q
+            remove_node_1(_node)
+        # 需要修改total_dis, used_vehicle_num, vehicle_dis, vehicle_cost
+        self.__record_current_routes()
+        self.__record_used_vehicle_num()
+        self.__recalculate_dis()
+        return
+
 
 if __name__ == '__main__':
     _vrp_instance = VRP()
@@ -770,12 +802,15 @@ if __name__ == '__main__':
     # _vrp_instance.print_route_load()
     print(_vrp_instance.total_dis)
     print(_vrp_instance.record_routes)
-    _vrp_instance.remove_supplys_and_related_demands({2})
-    _vrp_instance.remove_middles_and_related_nodes()
-    print(_vrp_instance.total_dis)
-    print(_vrp_instance.record_routes)
-    _vrp_instance.create_initial_solution_improved()
-    print(_vrp_instance.total_dis)
-    print(_vrp_instance.record_routes)
+    r_list = list(range(4, 26))
+    random.shuffle(r_list)
+    for i in r_list:
+        _vrp_instance.remove_demands_and_related_demands({i})
+        # _vrp_instance.remove_middles_and_related_nodes()
+        print(_vrp_instance.total_dis)
+        print(_vrp_instance.record_routes)
+        _vrp_instance.create_initial_solution_improved()
+        print(_vrp_instance.total_dis)
+        print(_vrp_instance.record_routes)
     # _vrp_instance.print_route_load()
     print('finished')
