@@ -185,7 +185,8 @@ def print_journey(X):
     print(calculate_route_length(supply_order, demand_order))
 
 
-if __name__ == '__main__':
+def improved_GA():
+    print('改进GA')
     start = time.perf_counter()
     """================================实例化问题对象==========================="""
     problem = MyProblem()
@@ -202,31 +203,87 @@ if __name__ == '__main__':
     """================================算法参数设置============================="""
     myAlgorithm = soea_psy_EGA_templet_1(problem, population)
     # myAlgorithm = soea_psy_EGA_templet_2(problem, population)
-    myAlgorithm.MAXGEN = 10 # 最大进化代数
+    myAlgorithm.MAXGEN = 100  # 最大进化代数
     myAlgorithm.logTras = 1  # 设置每隔多少代记录日志，若设置成0则表示不记录日志
-    myAlgorithm.verbose = True  # 设置是否打印输出日志信息
+    myAlgorithm.verbose = False  # 设置是否打印输出日志信息
     myAlgorithm.drawing = 0  # 设置绘图方式（0：不绘图；1：绘制结果图；2：绘制目标空间过程动画；3：绘制决策空间过程动画）
     """===========================根据先验知识创建先知种群========================"""
     # prophetChrom = [np.array([[2, 0,1.0]]),
-                    # np.array([[21.0, 20, 16, 17, 18, 19, 9, 13, 0, 2, 5, 4, 7, 6, 3, 1, 8, 10, 12, 11, 15, 14]])]
+    # np.array([[21.0, 20, 16, 17, 18, 19, 9, 13, 0, 2, 5, 4, 7, 6, 3, 1, 8, 10, 12, 11, 15, 14]])]
     # prophetPop = ea.PsyPopulation(Encodings, Fields, 1, prophetChrom)  # 实例化种群对象（设置个体数为1）
     # myAlgorithm.call_aimFunc(prophetPop)  # 计算先知种群的目标函数值及约束（假如有约束）
     """===========================调用算法模板进行种群进化========================"""
     # [BestIndi, population], _record = myAlgorithm.run(prophetPop)
     [BestIndi, population], _record = myAlgorithm.run()
     end = time.perf_counter()
-    print('CPU运行时间', end - start)
+    # print('CPU运行时间', end - start)
     BestIndi.save()
     """==================================输出结果=============================="""
-    print('评价次数：%s' % myAlgorithm.evalsNum)
+    # print('评价次数：%s' % myAlgorithm.evalsNum)
     print('时间已过 %s 秒' % myAlgorithm.passTime)
-    with open('ga.csv', 'w', newline='')as f:
-        f_csv = csv.writer(f)
-        f_csv.writerows(_record)
+    # with open('ga.csv', 'w', newline='') as f:
+    #     f_csv = csv.writer(f)
+    #     f_csv.writerows(_record)
     if BestIndi.sizes != 0:
         print('最优的目标函数值为：%s' % (BestIndi.ObjV[0][0]))
-        print('最优的控制变量值为：')
-        print(list(BestIndi.Phen[0]))
+        # print('最优的控制变量值为：')
+        # print(list(BestIndi.Phen[0]))
 
     else:
         print('没找到可行解。')
+
+
+def GA():
+    print('普通GA')
+    start = time.perf_counter()
+    """================================实例化问题对象==========================="""
+    problem = MyProblem()
+    """==================================种群设置=============================="""
+    NIND = 100  # 种群规模
+    # 创建区域描述器，这里需要创建两个，都使用排列编码
+    Encodings = ['P', 'P']
+    Field1 = ea.crtfld(Encodings[0], problem.varTypes[:supply_num], problem.ranges[:, :supply_num],
+                       problem.borders[:, :supply_num])
+    Field2 = ea.crtfld(Encodings[1], problem.varTypes[supply_num:], problem.ranges[:, supply_num:],
+                       problem.borders[:, supply_num:])
+    Fields = [Field1, Field2]
+    population = ea.PsyPopulation(Encodings, Fields, NIND)
+    """================================算法参数设置============================="""
+    # myAlgorithm = soea_psy_EGA_templet_1(problem, population)
+    myAlgorithm = soea_psy_EGA_templet_2(problem, population)
+    myAlgorithm.MAXGEN = 1000  # 最大进化代数
+    myAlgorithm.logTras = 1  # 设置每隔多少代记录日志，若设置成0则表示不记录日志
+    myAlgorithm.verbose = False  # 设置是否打印输出日志信息
+    myAlgorithm.drawing = 0  # 设置绘图方式（0：不绘图；1：绘制结果图；2：绘制目标空间过程动画；3：绘制决策空间过程动画）
+    """===========================根据先验知识创建先知种群========================"""
+    # prophetChrom = [np.array([[2, 0,1.0]]),
+    # np.array([[21.0, 20, 16, 17, 18, 19, 9, 13, 0, 2, 5, 4, 7, 6, 3, 1, 8, 10, 12, 11, 15, 14]])]
+    # prophetPop = ea.PsyPopulation(Encodings, Fields, 1, prophetChrom)  # 实例化种群对象（设置个体数为1）
+    # myAlgorithm.call_aimFunc(prophetPop)  # 计算先知种群的目标函数值及约束（假如有约束）
+    """===========================调用算法模板进行种群进化========================"""
+    # [BestIndi, population], _record = myAlgorithm.run(prophetPop)
+    [BestIndi, population], _record = myAlgorithm.run()
+    end = time.perf_counter()
+    # print('CPU运行时间', end - start)
+    BestIndi.save()
+    """==================================输出结果=============================="""
+    # print('评价次数：%s' % myAlgorithm.evalsNum)
+    print('时间已过 %s 秒' % myAlgorithm.passTime)
+    # with open('ga.csv', 'w', newline='') as f:
+    #     f_csv = csv.writer(f)
+    #     f_csv.writerows(_record)
+    if BestIndi.sizes != 0:
+        print('最优的目标函数值为：%s' % (BestIndi.ObjV[0][0]))
+        # print('最优的控制变量值为：')
+        # print(list(BestIndi.Phen[0]))
+
+    else:
+        print('没找到可行解。')
+
+
+if __name__ == '__main__':
+    # for i in range(5):
+    #     print('迭代次数', i)
+    #     improved_GA()
+    #     GA()
+    improved_GA()

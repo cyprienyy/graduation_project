@@ -72,7 +72,7 @@ soea_psy_EGA_templet.py - Polysomy Elitist Reservation GA templet(精英保留�
                     offspring.Chroms[0][i], offspring.Chroms[1][i] = improve_journey(list(offspring.Chroms[0][i]), list(
                         offspring.Chroms[1][i]))
             else:
-                print(self.trace['f_avg'][0], self.trace['f_best'][0])
+                # print(self.trace['f_avg'][0], self.trace['f_best'][0])
                 offspring.initChrom(NIND - 1)
             self.call_aimFunc(offspring)  # 计算目标函数值
             population = bestIndi + offspring  # 更新种群

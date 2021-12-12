@@ -79,7 +79,7 @@ def draw_curve(filepath='TempFiles/data.csv'):
 if __name__ == '__main__':
     # draw_curve()
 
-    _cor = get_soloman_cor(r'TempFiles\C101.txt')
+    _cor = get_soloman_cor(r'TempFiles\RC101_50.txt')
 
     x = [
         [0, 3, 5, 3, 3, 1, 7, 23, 25, 24, 20, 21, 22, 8, 8, 11, 9, 6, 4, 3, 1, 1, 2, 10, 13, 17, 17, 18, 15, 19, 16, 14,
@@ -97,4 +97,5 @@ if __name__ == '__main__':
     ant_ga_r = [
         [0, 3, 25, 24, 22, 20, 21, 23, 5, 3, 3, 1, 4, 6, 8, 9, 11, 10, 7, 3, 1, 1, 2, 13, 12, 12, 14, 16, 15, 19, 18,
          17, 2, 1, 0]]
-    draw_route(_cor, 0, [1, 2, 9], list(range(3, 9)) + list(range(10, 26)), imp_ga_r)
+    # draw_route(_cor, 0, list(range(1, 4)), list(range(4, 26)), [])
+    draw_route(_cor, 0, list(range(1,45)), list(range(45, 51)), [])

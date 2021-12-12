@@ -80,7 +80,6 @@ class Ant(object):
     #         for _s in self.open_supply:
     #             if self.t + estimate_time()
 
-
     def __choice_next_supply(self):
 
         if self.current_city in self.open_supply:
@@ -250,7 +249,7 @@ class VRP(object):
                 self.clean_phermone()
             # 更新信息素
             self.__update_pheromone_graph()
-            print(u"迭代次数：", self.iter, u"最佳路径总距离：", self.best_ant.total_distance)
+            # print(u"迭代次数：", self.iter, u"最佳路径总距离：", self.best_ant.total_distance)
             record.append([self.iter, self.best_ant.total_distance])
             self.iter += 1
         path = self.best_ant.path
@@ -275,27 +274,39 @@ class VRP(object):
 
 
 # ----------- 程序的入口处 -----------
-
-if __name__ == '__main__':
+def ant_vrp():
     start = time.perf_counter()
     vrp = VRP()
-    _path, _record = vrp.search_path(1000)
-    _supply = []
-    _demand = []
-    _gene = []
-    for _rt in _path:
-        for _i in _rt:
-            if _i in supplys and _i not in _supply:
-                _supply.append(_i)
-            if _i in demands and _i not in _demand:
-                _demand.append(_i)
-    for _i in _supply:
-        _gene.append(supplys.index(_i))
-    for _i in _demand:
-        _gene.append(demands.index(_i))
-    print(_gene)
+    _path, _record = vrp.search_path(200)
     end = time.perf_counter()
     print('CPU运行时间', end - start)
-    with open('ant.csv', 'w', newline='')as f:
-        f_csv = csv.writer(f)
-        f_csv.writerows(_record)
+    print('最优解', _record[-1][-1])
+
+
+if __name__ == '__main__':
+    # start = time.perf_counter()
+    # vrp = VRP()
+    # _path, _record = vrp.search_path(1000)
+    # _supply = []
+    # _demand = []
+    # _gene = []
+    # for _rt in _path:
+    #     for _i in _rt:
+    #         if _i in supplys and _i not in _supply:
+    #             _supply.append(_i)
+    #         if _i in demands and _i not in _demand:
+    #             _demand.append(_i)
+    # for _i in _supply:
+    #     _gene.append(supplys.index(_i))
+    # for _i in _demand:
+    #     _gene.append(demands.index(_i))
+    # print(_gene)
+    # end = time.perf_counter()
+    # print('CPU运行时间', end - start)
+    # with open('ant.csv', 'w', newline='') as f:
+    #     f_csv = csv.writer(f)
+    #     f_csv.writerows(_record)
+    # for i in range(5):
+    #     print('迭代次数', i)
+    #     ant_vrp()
+    ant_vrp()
