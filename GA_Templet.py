@@ -172,9 +172,9 @@ soea_psy_EGA_templet.py - Polysomy Elitist Reservation GA templet(精英保留�
         # 由于有多个染色体，因此需要用多个重组和变异算子
         self.recOpers = []
         self.mutOpers = []
-        self.recOpers.append(ea.Xovpmx(XOVR=0.8))
+        self.recOpers.append(ea.Xovpmx(XOVR=0.5))
         self.recOpers.append(ea.Xovox(XOVR=0.8))
-        self.mutOpers.append(ea.Mutswap(Pm=0.6))
+        self.mutOpers.append(ea.Mutswap(Pm=0.3))
         self.mutOpers.append(ea.Mutswap(Pm=0.6))
 
     def run(self, prophetPop=None):  # prophetPop为先知种群（即包含先验知识的种群）
